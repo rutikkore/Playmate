@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Zap, ArrowRight, MapPin, Users, CalendarDays, Shield } from "lucide-react";
 import heroImage from "@/assets/hero-turf.jpg";
 import { Hero } from "@/components/home/Hero";
-import { ScrollScene3D } from "@/components/home/ScrollScene3D";
+
 
 const features = [
   { icon: MapPin, title: "Discover Turfs", desc: "Find premium sports turfs near you with real-time availability" },
@@ -41,8 +41,7 @@ const Index = () => {
       {/* Hero */}
       <Hero />
 
-      {/* 3D Scroll Scene */}
-      <ScrollScene3D />
+
 
       {/* Features */}
       <section className="py-24 px-6">
