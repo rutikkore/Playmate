@@ -25,9 +25,13 @@ export const AuthInput = ({ label, icon: Icon, error, className, ...props }: Aut
             />
             <label
                 className={cn(
-                    "absolute left-10 top-1/2 -translate-y-1/2 text-sm text-muted-foreground transition-all pointer-events-none",
-                    "peer-focus:-top-2.5 peer-focus:left-2 peer-focus:text-xs peer-focus:text-primary peer-focus:bg-background peer-focus:px-2",
-                    "peer-not-placeholder-shown:-top-2.5 peer-not-placeholder-shown:left-2 peer-not-placeholder-shown:text-xs peer-not-placeholder-shown:bg-background peer-not-placeholder-shown:px-2"
+                    "absolute transition-all pointer-events-none",
+                    // Default state: risen above the input border when it contains text
+                    "-top-2.5 left-2 text-xs text-muted-foreground bg-background px-2",
+                    // Empty state (not focused): centered inside the input
+                    "peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:left-10 peer-placeholder-shown:text-sm peer-placeholder-shown:bg-transparent peer-placeholder-shown:px-0",
+                    // Focused state (even if empty): rises above the input border and changes color
+                    "peer-focus:-top-2.5 peer-focus:left-2 peer-focus:text-xs peer-focus:text-primary peer-focus:bg-background peer-focus:px-2"
                 )}
             >
                 {label}

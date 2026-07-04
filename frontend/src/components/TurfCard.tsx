@@ -2,7 +2,7 @@ import { MapPin, Star, Clock } from "lucide-react";
 import { Link } from "react-router-dom";
 
 interface TurfCardProps {
-  id: number;
+  id: string | number;
   name: string;
   location: string;
   sport: string;
@@ -14,7 +14,7 @@ interface TurfCardProps {
 
 export function TurfCard({ id, name, location, sport, price, rating, image, available }: TurfCardProps) {
   return (
-    <Link to="/booking" className="block">
+    <Link to={`/booking?turfId=${id}`} className="block">
       <div className="glass-card-hover overflow-hidden group">
         <div className="relative h-44 overflow-hidden">
           <img
