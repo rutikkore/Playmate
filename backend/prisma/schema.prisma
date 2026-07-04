@@ -12,6 +12,17 @@ enum Role {
   PROVIDER
 }
 
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum SlotStatus {
+  AVAILABLE
+  BLOCKED
+}
+
 model User {
   id            String   @id @default(cuid())
   firebaseUid   String   @unique
@@ -22,4 +33,132 @@ model User {
   emailVerified Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  // Relationships
+  providerProfile ProviderProfile?
+  favourites      Favourite[]
+  bookings        Booking[]
+}
+
+model ProviderProfile {
+  id                 String             @id @default(cuid())
+  userId             String             @unique
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessName       String
+  contactPhone       String?
+  verificationStatus VerificationStatus @default(PENDING)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  // Relationships
+  turfs Turf[]
+}
+
+model Sport {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  icon      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  turfs TurfSport[]
+}
+
+model Turf {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  location     String
+  latitude     Float?
+  longitude    Float?
+  pricePerHour Float
+  courts       Int      @default(1)
+  images       String[] @default([])
+  status       String   @default("active") // active, inactive
+  isDeleted    Boolean  @default(false)
+  deletedAt    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relationships
+  providerId String
+  provider   ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  
+  sports     TurfSport[]
+  slots      AvailabilitySlot[]
+  favourites Favourite[]
+  
+  // Placeholders
+  bookings   Booking[]
+  reviews    Review[]
+
+  @@index([providerId])
+  @@index([isDeleted])
+}
+
+model TurfSport {
+  turfId  String
+  sportId String
+  turf    Turf   @relation(fields: [turfId], references: [id], onDelete: Cascade)
+  sport   Sport  @relation(fields: [sportId], references: [id], onDelete: Cascade)
+
+  @@id([turfId, sportId])
+}
+
+model AvailabilitySlot {
+  id        String     @id @default(cuid())
+  turfId    String
+  turf      Turf       @relation(fields: [turfId], references: [id], onDelete: Cascade)
+  date      DateTime
+  startTime String     // e.g. "06:00 AM" or "06:00"
+  endTime   String     // e.g. "07:00 AM" or "07:00"
+  status    SlotStatus @default(AVAILABLE)
+  price     Float?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([turfId, date, startTime])
+  @@index([turfId, date])
+}
+
+model Favourite {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  turfId    String
+  turf      Turf     @relation(fields: [turfId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, turfId])
+  @@index([userId])
+}
+
+// Placeholder models for Milestone 3+ (minimal)
+model Booking {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  turfId    String
+  turf      Turf     @relation(fields: [turfId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model HostedMatch {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+}
+
+model MatchParticipant {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  turfId    String
+  turf      Turf     @relation(fields: [turfId], references: [id])
+  rating    Int
+  createdAt DateTime @default(now())
 }

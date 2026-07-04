@@ -2,9 +2,9 @@ import { CalendarDays, Gamepad2, MapPin, Users, Trophy, TrendingUp } from "lucid
 import { useRole } from "@/contexts/RoleContext";
 import { StatCard } from "@/components/StatCard";
 import { TurfCard } from "@/components/TurfCard";
-import turf1 from "@/assets/turf-1.jpg";
-import turf2 from "@/assets/turf-2.jpg";
-import turf3 from "@/assets/turf-3.jpg";
+import { useQuery } from "@tanstack/react-query";
+import { turfService } from "@/services/turf.service";
+import { getTurfImage } from "@/lib/utils";
 
 const upcomingGames = [
   { id: 1, sport: "Football", venue: "Green Arena", time: "Today, 6:00 PM", players: "8/10" },
@@ -12,14 +12,24 @@ const upcomingGames = [
   { id: 3, sport: "Cricket", venue: "Pitch Perfect", time: "Feb 16, 4:00 PM", players: "16/22" },
 ];
 
-const recommendedTurfs = [
-  { id: 1, name: "Green Arena 5-a-side", location: "Koramangala, Bangalore", sport: "Football", price: 1200, rating: 4.8, image: turf1, available: true },
-  { id: 2, name: "Shuttle Zone Pro", location: "HSR Layout, Bangalore", sport: "Badminton", price: 800, rating: 4.6, image: turf2, available: true },
-  { id: 3, name: "Pitch Perfect Nets", location: "Indiranagar, Bangalore", sport: "Cricket", price: 1500, rating: 4.9, image: turf3, available: false },
-];
-
 const PlayerDashboard = () => {
   const { userName } = useRole();
+
+  const { data: dbTurfs = [] } = useQuery({
+    queryKey: ["recommended-turfs"],
+    queryFn: () => turfService.getTurfs(),
+  });
+
+  const recommendedTurfs = dbTurfs.slice(0, 3).map((t) => ({
+    id: t.id,
+    name: t.name,
+    location: t.location,
+    sport: t.sports[0]?.sport.name || "Football",
+    price: t.pricePerHour,
+    rating: 4.8,
+    image: getTurfImage(t.images[0]),
+    available: t.status === "active",
+  }));
   return (
     <div className="p-6 lg:p-8 animate-fade-in">
       {/* Header */}

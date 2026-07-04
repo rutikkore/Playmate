@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Clock, MapPin, Star, X, CheckCircle, Loader2 } from "lucide-react";
-import turf1 from "@/assets/turf-1.jpg";
+import { useSearchParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { turfService } from "@/services/turf.service";
+import { getTurfImage } from "@/lib/utils";
 
 const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const dates = [10, 11, 12, 13, 14, 15, 16];
@@ -13,15 +16,44 @@ const timeSlots = [
 const initialBooked = new Set(["6:00 AM-10", "9:00 AM-11", "6:00 PM-14", "7:00 PM-14", "8:00 PM-14", "3:00 PM-12", "10:00 AM-15"]);
 
 const BookingCalendar = () => {
+  const [searchParams] = useSearchParams();
+  const turfId = searchParams.get("turfId");
+
   const [selectedDate, setSelectedDate] = useState(14);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [bookedSlots, setBookedSlots] = useState(initialBooked);
   const [bookingState, setBookingState] = useState<"idle" | "loading" | "success">("idle");
 
+  // Fetch turf details
+  const { data: turf, isLoading: isTurfLoading } = useQuery({
+    queryKey: ["turf", turfId],
+    queryFn: () => turfService.getTurfById(turfId!),
+    enabled: !!turfId,
+  });
+
+  // Fetch slots availability for selectedDate
+  const dateStr = `2026-02-${selectedDate.toString().padStart(2, "0")}T00:00:00.000Z`;
+  const { data: dbSlots = [], isLoading: isSlotsLoading } = useQuery({
+    queryKey: ["availability", turfId, selectedDate],
+    queryFn: () => turfService.getAvailability(turfId!, dateStr),
+    enabled: !!turfId,
+  });
+
+  const getSlotStatus = (time: string) => {
+    const dbSlot = dbSlots.find((s) => s.startTime === time);
+    const key = `${time}-${selectedDate}`;
+    const isLocallyBooked = bookedSlots.has(key);
+    const isBlocked = dbSlot?.status === "BLOCKED";
+    return {
+      isUnavailable: isBlocked || isLocallyBooked,
+      price: dbSlot?.price || turf?.pricePerHour || 1200,
+    };
+  };
+
   const handleSlotClick = (time: string, date: number) => {
-    const key = `${time}-${date}`;
-    if (bookedSlots.has(key)) return;
+    const status = getSlotStatus(time);
+    if (status.isUnavailable) return;
     setSelectedSlot(time);
     setSelectedDate(date);
     setShowModal(true);
@@ -42,22 +74,42 @@ const BookingCalendar = () => {
     }, 800);
   };
 
+  if (isTurfLoading || isSlotsLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const selectedSlotStatus = selectedSlot ? getSlotStatus(selectedSlot) : null;
+
   return (
     <div className="p-6 lg:p-8 animate-fade-in">
       <div className="mb-6">
         <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Book a Slot</h1>
-        <p className="text-muted-foreground mt-1">Select your preferred time at Green Arena</p>
+        <p className="text-muted-foreground mt-1">Select your preferred time at {turf?.name || "Green Arena"}</p>
       </div>
 
       {/* Turf info */}
       <div className="glass-card p-4 mb-6 flex items-center gap-4">
-        <img src={turf1} alt="Green Arena" className="h-16 w-24 rounded-lg object-cover" />
+        <img
+          src={getTurfImage(turf?.images[0])}
+          alt={turf?.name || "Green Arena"}
+          className="h-16 w-24 rounded-lg object-cover"
+        />
         <div className="flex-1">
-          <h3 className="font-semibold text-foreground">Green Arena 5-a-side</h3>
+          <h3 className="font-semibold text-foreground">{turf?.name || "Green Arena 5-a-side"}</h3>
           <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> Koramangala</span>
-            <span className="flex items-center gap-1"><Star className="h-3.5 w-3.5 text-warning" /> 4.8</span>
-            <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> ₹1,200/hr</span>
+            <span className="flex items-center gap-1">
+              <MapPin className="h-3.5 w-3.5" /> {turf?.location || "Koramangala"}
+            </span>
+            <span className="flex items-center gap-1">
+              <Star className="h-3.5 w-3.5 text-warning fill-warning" /> 4.8
+            </span>
+            <span className="flex items-center gap-1">
+              <Clock className="h-3.5 w-3.5" /> ₹{turf?.pricePerHour || "1,200"}/hr
+            </span>
           </div>
         </div>
       </div>
@@ -91,15 +143,14 @@ const BookingCalendar = () => {
       {/* Time slots grid */}
       <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
         {timeSlots.map((time) => {
-          const key = `${time}-${selectedDate}`;
-          const isBooked = bookedSlots.has(key);
+          const status = getSlotStatus(time);
           return (
             <button
               key={time}
               onClick={() => handleSlotClick(time, selectedDate)}
-              disabled={isBooked}
+              disabled={status.isUnavailable}
               className={`py-3 px-2 rounded-xl text-sm font-medium border transition-all ${
-                isBooked
+                status.isUnavailable
                   ? "bg-destructive/10 border-destructive/20 text-destructive/60 cursor-not-allowed line-through"
                   : "border-border bg-secondary text-foreground slot-hover"
               }`}
@@ -111,20 +162,27 @@ const BookingCalendar = () => {
       </div>
 
       <div className="flex items-center gap-6 mt-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-2"><span className="h-3 w-3 rounded bg-secondary border border-border" /> Available</span>
-        <span className="flex items-center gap-2"><span className="h-3 w-3 rounded bg-destructive/10 border border-destructive/20" /> Booked</span>
+        <span className="flex items-center gap-2">
+          <span className="h-3 w-3 rounded bg-secondary border border-border" /> Available
+        </span>
+        <span className="flex items-center gap-2">
+          <span className="h-3 w-3 rounded bg-destructive/10 border border-destructive/20" /> Unavailable
+        </span>
       </div>
 
       {/* Booking Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-fade-in" onClick={() => bookingState === "idle" && setShowModal(false)}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => bookingState === "idle" && setShowModal(false)}
+        >
           <div className="glass-card p-6 w-full max-w-md animate-scale-in neon-border" onClick={(e) => e.stopPropagation()}>
             {bookingState === "success" ? (
               <div className="text-center py-6 animate-fade-in">
                 <CheckCircle className="h-16 w-16 text-primary mx-auto mb-4" />
                 <h3 className="text-xl font-bold text-foreground">Booking Confirmed!</h3>
                 <p className="text-sm text-muted-foreground mt-2">
-                  {selectedSlot} on Feb {selectedDate} at Green Arena
+                  {selectedSlot} on Feb {selectedDate} at {turf?.name || "Green Arena"}
                 </p>
               </div>
             ) : (
@@ -138,7 +196,7 @@ const BookingCalendar = () => {
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between py-2 border-b border-border">
                     <span className="text-muted-foreground">Venue</span>
-                    <span className="text-foreground font-medium">Green Arena 5-a-side</span>
+                    <span className="text-foreground font-medium">{turf?.name || "Green Arena 5-a-side"}</span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-border">
                     <span className="text-muted-foreground">Date</span>
@@ -154,7 +212,9 @@ const BookingCalendar = () => {
                   </div>
                   <div className="flex justify-between py-2">
                     <span className="text-muted-foreground">Total</span>
-                    <span className="text-primary font-bold text-lg">₹1,200</span>
+                    <span className="text-primary font-bold text-lg">
+                      ₹{selectedSlotStatus?.price ? selectedSlotStatus.price.toLocaleString() : "1,200"}
+                    </span>
                   </div>
                 </div>
                 <button

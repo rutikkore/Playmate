@@ -28,11 +28,14 @@ export async function requireAuth(
     }
 
     const decodedToken = await firebaseAuth.verifyIdToken(token);
+    const email = decodedToken.email || (decodedToken.phone_number ? `${decodedToken.phone_number}@playmate.phone` : `${decodedToken.uid}@playmate.phone`);
+    const name = decodedToken.name || decodedToken.phone_number || "Phone User";
+
     req.user = {
       firebaseUid: decodedToken.uid,
-      email: decodedToken.email || "",
-      emailVerified: decodedToken.email_verified || false,
-      name: decodedToken.name || "",
+      email: email,
+      emailVerified: decodedToken.email_verified || (!!decodedToken.phone_number) || false,
+      name: name,
       photoUrl: decodedToken.picture || "",
     };
 

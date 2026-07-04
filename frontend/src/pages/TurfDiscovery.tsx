@@ -1,31 +1,42 @@
 import { useState } from "react";
-import { Search, SlidersHorizontal, MapPin } from "lucide-react";
+import { Search, SlidersHorizontal, MapPin, Loader2 } from "lucide-react";
 import { TurfCard } from "@/components/TurfCard";
-import turf1 from "@/assets/turf-1.jpg";
-import turf2 from "@/assets/turf-2.jpg";
-import turf3 from "@/assets/turf-3.jpg";
-import turf4 from "@/assets/turf-4.jpg";
-
-const sports = ["All", "Football", "Cricket", "Badminton", "Tennis", "Basketball"];
-
-const turfs = [
-  { id: 1, name: "Green Arena 5-a-side", location: "Koramangala, Bangalore", sport: "Football", price: 1200, rating: 4.8, image: turf1, available: true },
-  { id: 2, name: "Shuttle Zone Pro", location: "HSR Layout, Bangalore", sport: "Badminton", price: 800, rating: 4.6, image: turf2, available: true },
-  { id: 3, name: "Pitch Perfect Nets", location: "Indiranagar, Bangalore", sport: "Cricket", price: 1500, rating: 4.9, image: turf3, available: false },
-  { id: 4, name: "Ace Tennis Academy", location: "Whitefield, Bangalore", sport: "Tennis", price: 1000, rating: 4.7, image: turf4, available: true },
-  { id: 5, name: "Goal Rush Arena", location: "JP Nagar, Bangalore", sport: "Football", price: 1100, rating: 4.5, image: turf1, available: true },
-  { id: 6, name: "Smash Court", location: "Marathahalli, Bangalore", sport: "Badminton", price: 700, rating: 4.3, image: turf2, available: true },
-];
+import { useQuery } from "@tanstack/react-query";
+import { turfService } from "@/services/turf.service";
+import { getTurfImage } from "@/lib/utils";
 
 const TurfDiscovery = () => {
   const [activeSport, setActiveSport] = useState("All");
   const [search, setSearch] = useState("");
 
-  const filtered = turfs.filter((t) => {
-    const matchesSport = activeSport === "All" || t.sport === activeSport;
-    const matchesSearch = t.name.toLowerCase().includes(search.toLowerCase()) || t.location.toLowerCase().includes(search.toLowerCase());
-    return matchesSport && matchesSearch;
+  // Fetch sports
+  const { data: dbSports = [] } = useQuery({
+    queryKey: ["sports"],
+    queryFn: () => turfService.getSports(),
   });
+
+  const sportsList = ["All", ...dbSports.map((s) => s.name)];
+
+  // Fetch turfs
+  const { data: dbTurfs = [], isLoading } = useQuery({
+    queryKey: ["turfs", activeSport, search],
+    queryFn: () =>
+      turfService.getTurfs({
+        sport: activeSport === "All" ? undefined : activeSport,
+        search: search || undefined,
+      }),
+  });
+
+  const filtered = dbTurfs.map((t) => ({
+    id: t.id,
+    name: t.name,
+    location: t.location,
+    sport: t.sports[0]?.sport.name || "Football",
+    price: t.pricePerHour,
+    rating: 4.8, // static rating since reviews are a placeholder
+    image: getTurfImage(t.images[0]),
+    available: t.status === "active",
+  }));
 
   return (
     <div className="p-6 lg:p-8 animate-fade-in">
@@ -58,7 +69,7 @@ const TurfDiscovery = () => {
 
       {/* Sport tabs */}
       <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
-        {sports.map((sport) => (
+        {sportsList.map((sport) => (
           <button
             key={sport}
             onClick={() => setActiveSport(sport)}
@@ -74,12 +85,20 @@ const TurfDiscovery = () => {
       </div>
 
       {/* Results */}
-      <p className="text-sm text-muted-foreground mb-4">{filtered.length} turfs found</p>
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {filtered.map((turf) => (
-          <TurfCard key={turf.id} {...turf} />
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : (
+        <>
+          <p className="text-sm text-muted-foreground mb-4">{filtered.length} turfs found</p>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filtered.map((turf) => (
+              <TurfCard key={turf.id} {...turf} />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 };

@@ -2,6 +2,11 @@ import express from "express";
 import cors from "cors";
 import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
+import sportRoutes from "./routes/sport.routes.js";
+import providerRoutes from "./routes/provider.routes.js";
+import turfRoutes from "./routes/turf.routes.js";
+import availabilityRoutes from "./routes/availability.routes.js";
+import favouriteRoutes from "./routes/favourite.routes.js";
 
 const app = express();
 
@@ -41,5 +46,10 @@ app.get("/api/health", (req, res) => {
 // Main Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/sports", sportRoutes);
+app.use("/api/providers", providerRoutes);
+app.use("/api/turfs", turfRoutes);
+app.use("/api/availability", availabilityRoutes);
+app.use("/api/favourites", favouriteRoutes);
 
 export default app;
