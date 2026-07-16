@@ -1,6 +1,7 @@
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 generator client {
@@ -21,6 +22,19 @@ enum VerificationStatus {
 enum SlotStatus {
   AVAILABLE
   BLOCKED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum CancelledBy {
+  PLAYER
+  PROVIDER
+  SYSTEM
 }
 
 model User {
@@ -119,6 +133,9 @@ model AvailabilitySlot {
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 
+  // Relationships
+  booking   Booking?
+
   @@unique([turfId, date, startTime])
   @@index([turfId, date])
 }
@@ -137,12 +154,23 @@ model Favourite {
 
 // Placeholder models for Milestone 3+ (minimal)
 model Booking {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  turfId    String
-  turf      Turf     @relation(fields: [turfId], references: [id])
-  createdAt DateTime @default(now())
+  id          String           @id @default(cuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Restrict)
+  turfId      String
+  turf        Turf             @relation(fields: [turfId], references: [id], onDelete: Restrict)
+  slotId      String           @unique
+  slot        AvailabilitySlot @relation(fields: [slotId], references: [id], onDelete: Restrict)
+  status      BookingStatus    @default(CONFIRMED)
+  totalPrice  Decimal
+  cancelledAt DateTime?
+  cancelledBy CancelledBy?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([userId])
+  @@index([turfId])
+  @@index([status])
 }
 
 model HostedMatch {

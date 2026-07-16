@@ -7,6 +7,7 @@ import providerRoutes from "./routes/provider.routes.js";
 import turfRoutes from "./routes/turf.routes.js";
 import availabilityRoutes from "./routes/availability.routes.js";
 import favouriteRoutes from "./routes/favourite.routes.js";
+import bookingRoutes from "./routes/booking.routes.js";
 
 const app = express();
 
@@ -51,5 +52,6 @@ app.use("/api/providers", providerRoutes);
 app.use("/api/turfs", turfRoutes);
 app.use("/api/availability", availabilityRoutes);
 app.use("/api/favourites", favouriteRoutes);
+app.use("/api/bookings", bookingRoutes);
 
 export default app;
