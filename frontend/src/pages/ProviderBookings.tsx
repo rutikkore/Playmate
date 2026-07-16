@@ -1,49 +1,50 @@
 import { useState } from "react";
-import { CalendarDays, Clock, User, Search, CheckCircle, XCircle, AlertCircle } from "lucide-react";
-
-interface Booking {
-  id: number;
-  player: string;
-  sport: string;
-  date: string;
-  time: string;
-  court: string;
-  amount: number;
-  status: "confirmed" | "pending" | "cancelled";
-}
-
-const allBookings: Booking[] = [
-  { id: 1, player: "Arjun M.", sport: "Football", date: "Feb 14", time: "6:00 PM", court: "Court A", amount: 1200, status: "confirmed" },
-  { id: 2, player: "Priya S.", sport: "Badminton", date: "Feb 15", time: "7:30 AM", court: "Court B", amount: 800, status: "confirmed" },
-  { id: 3, player: "Vikram R.", sport: "Cricket", date: "Feb 16", time: "4:00 PM", court: "Court A", amount: 1500, status: "pending" },
-  { id: 4, player: "Meera D.", sport: "Tennis", date: "Feb 15", time: "6:00 AM", court: "Court C", amount: 1000, status: "confirmed" },
-  { id: 5, player: "Rahul K.", sport: "Football", date: "Feb 14", time: "8:00 PM", court: "Court A", amount: 1200, status: "cancelled" },
-  { id: 6, player: "Ananya T.", sport: "Badminton", date: "Feb 17", time: "9:00 AM", court: "Court B", amount: 800, status: "pending" },
-];
+import { CalendarDays, Clock, User, Search, CheckCircle, XCircle, AlertCircle, Loader2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { bookingService } from "@/services/booking.service";
+import { format } from "date-fns";
 
 const statusIcon: Record<string, typeof CheckCircle> = {
-  confirmed: CheckCircle,
-  pending: AlertCircle,
-  cancelled: XCircle,
+  CONFIRMED: CheckCircle,
+  PENDING: AlertCircle,
+  CANCELLED: XCircle,
+  COMPLETED: CheckCircle,
 };
 
 const statusStyle: Record<string, string> = {
-  confirmed: "text-primary bg-primary/10 border-primary/20",
-  pending: "text-warning bg-warning/10 border-warning/20",
-  cancelled: "text-destructive bg-destructive/10 border-destructive/20",
+  CONFIRMED: "text-primary bg-primary/10 border-primary/20",
+  COMPLETED: "text-success bg-success/10 border-success/20",
+  PENDING: "text-warning bg-warning/10 border-warning/20",
+  CANCELLED: "text-destructive bg-destructive/10 border-destructive/20",
 };
 
 const ProviderBookings = () => {
-  const [tab, setTab] = useState<"all" | "confirmed" | "pending" | "cancelled">("all");
+  const [tab, setTab] = useState<"all" | "CONFIRMED" | "PENDING" | "CANCELLED" | "COMPLETED">("all");
   const [search, setSearch] = useState("");
 
-  const filtered = allBookings.filter((b) => {
-    const matchesTab = tab === "all" || b.status === tab;
-    const matchesSearch = b.player.toLowerCase().includes(search.toLowerCase()) || b.sport.toLowerCase().includes(search.toLowerCase());
+  const { data: bookings = [], isLoading } = useQuery({
+    queryKey: ["providerBookings"],
+    queryFn: () => bookingService.getProviderBookings(),
+  });
+
+  const filtered = bookings.filter((b) => {
+    const bStatus = b.derivedStatus || b.status;
+    const matchesTab = tab === "all" || bStatus === tab;
+    const playerName = b.user?.name || "Unknown Player";
+    const turfName = b.turf?.name || "";
+    const matchesSearch = playerName.toLowerCase().includes(search.toLowerCase()) || turfName.toLowerCase().includes(search.toLowerCase());
     return matchesTab && matchesSearch;
   });
 
-  const totalRevenue = allBookings.filter((b) => b.status === "confirmed").reduce((sum, b) => sum + b.amount, 0);
+  const totalRevenue = bookings.filter((b) => b.derivedStatus === "COMPLETED" || b.derivedStatus === "CONFIRMED").reduce((sum, b) => sum + Number(b.totalPrice), 0);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 lg:p-8 animate-fade-in">
@@ -55,16 +56,16 @@ const ProviderBookings = () => {
       {/* Stats row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="glass-card p-4 text-center">
-          <p className="text-2xl font-bold text-foreground">{allBookings.length}</p>
+          <p className="text-2xl font-bold text-foreground">{bookings.length}</p>
           <p className="text-xs text-muted-foreground">Total</p>
         </div>
         <div className="glass-card p-4 text-center">
-          <p className="text-2xl font-bold text-primary">{allBookings.filter((b) => b.status === "confirmed").length}</p>
+          <p className="text-2xl font-bold text-primary">{bookings.filter((b) => b.derivedStatus === "CONFIRMED").length}</p>
           <p className="text-xs text-muted-foreground">Confirmed</p>
         </div>
         <div className="glass-card p-4 text-center">
-          <p className="text-2xl font-bold text-warning">{allBookings.filter((b) => b.status === "pending").length}</p>
-          <p className="text-xs text-muted-foreground">Pending</p>
+          <p className="text-2xl font-bold text-success">{bookings.filter((b) => b.derivedStatus === "COMPLETED").length}</p>
+          <p className="text-xs text-muted-foreground">Completed</p>
         </div>
         <div className="glass-card p-4 text-center">
           <p className="text-2xl font-bold text-primary">₹{totalRevenue.toLocaleString()}</p>
@@ -83,8 +84,8 @@ const ProviderBookings = () => {
             className="w-full h-11 pl-10 pr-4 bg-secondary border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
           />
         </div>
-        <div className="flex gap-2">
-          {(["all", "confirmed", "pending", "cancelled"] as const).map((t) => (
+        <div className="flex gap-2 flex-wrap">
+          {(["all", "CONFIRMED", "COMPLETED", "CANCELLED"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -106,7 +107,10 @@ const ProviderBookings = () => {
           </div>
         ) : (
           filtered.map((booking) => {
-            const Icon = statusIcon[booking.status];
+            const bStatus = booking.derivedStatus || booking.status;
+            const Icon = statusIcon[bStatus] || CheckCircle;
+            const gameDate = new Date(booking.slot!.date);
+            
             return (
               <div key={booking.id} className="glass-card-hover p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
@@ -114,19 +118,18 @@ const ProviderBookings = () => {
                     <User className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="font-medium text-foreground">{booking.player}</p>
-                    <div className="flex items-center gap-3 text-sm text-muted-foreground mt-0.5">
-                      <span>{booking.sport}</span>
-                      <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3" /> {booking.date}</span>
-                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {booking.time}</span>
-                      <span>{booking.court}</span>
+                    <p className="font-medium text-foreground">{booking.user?.name || "Unknown Player"}</p>
+                    <div className="flex items-center flex-wrap gap-3 text-sm text-muted-foreground mt-0.5">
+                      <span>{booking.turf?.name}</span>
+                      <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3" /> {format(gameDate, "MMM d")}</span>
+                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {booking.slot?.startTime}</span>
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="text-sm font-bold text-primary">₹{booking.amount}</span>
-                  <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border capitalize ${statusStyle[booking.status]}`}>
-                    <Icon className="h-3 w-3" /> {booking.status}
+                  <span className="text-sm font-bold text-primary">₹{booking.totalPrice}</span>
+                  <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border capitalize ${statusStyle[bStatus]}`}>
+                    <Icon className="h-3 w-3" /> {bStatus}
                   </span>
                 </div>
               </div>

@@ -78,6 +78,24 @@ export async function updateAvailability(req: DBAuthenticatedRequest, res: Respo
       if (slot.status !== SlotStatus.AVAILABLE && slot.status !== SlotStatus.BLOCKED) {
         return res.status(400).json({ error: "Each slot status must be AVAILABLE or BLOCKED" });
       }
+
+      // M3: Check for active booking before allowing BLOCKED status
+      if (slot.status === SlotStatus.BLOCKED) {
+        const existingSlot = await prisma.availabilitySlot.findUnique({
+          where: {
+            turfId_date_startTime: {
+              turfId,
+              date: date,
+              startTime: slot.startTime,
+            }
+          },
+          include: { booking: true }
+        });
+        
+        if (existingSlot?.booking && existingSlot.booking.status !== 'CANCELLED') {
+          return res.status(400).json({ error: `Cannot block slot ${slot.startTime} because it has an active booking.` });
+        }
+      }
     }
 
     const updatedSlots = await upsertSlots(

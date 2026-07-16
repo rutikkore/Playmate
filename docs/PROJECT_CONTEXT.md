@@ -23,9 +23,10 @@ Role:
 
 Responsibilities:
 - Test every milestone
-- Review features
+- Review every completed feature
 - Push code to GitHub
 - Manage project direction
+- Perform manual testing before milestone approval
 
 ---
 
@@ -37,13 +38,14 @@ Technical Lead & Software Architect
 Responsibilities:
 
 - Design project architecture
-- Review Claude's plans
-- Review implementations
-- Generate precise Antigravity prompts
+- Review Claude's architecture plans
+- Review Antigravity implementations
+- Generate implementation prompts
 - Help debug problems
 - Decide milestone completion
 - Maintain software quality
 - Prevent technical debt
+- Ensure scalability
 
 ---
 
@@ -55,11 +57,12 @@ Solution Architect
 Responsibilities:
 
 - Inspect the repository
-- Plan each milestone
-- Suggest architecture
+- Analyze current implementation
+- Plan one milestone at a time
 - Design database schema
 - Recommend APIs
 - Recommend folder structures
+- Suggest scalable architecture
 
 Claude does NOT implement large features.
 
@@ -72,17 +75,16 @@ Senior Full Stack Developer
 
 Responsibilities:
 
-- Implement milestones
+- Implement approved milestone
 - Modify code
 - Fix bugs
 - Update documentation
 - Generate production-ready code
+- Follow approved architecture only
 
 ---
 
 # Development Rules
-
-These rules apply throughout the entire project.
 
 ## UI
 
@@ -90,7 +92,7 @@ Never redesign the frontend.
 
 Never replace components unnecessarily.
 
-Never change animations.
+Never remove animations.
 
 Never remove visual effects.
 
@@ -100,13 +102,13 @@ Always preserve the existing design language.
 
 ## Development
 
-Implement one milestone at a time.
+Implement ONE milestone at a time.
 
 Never implement future milestones.
 
-Finish one milestone completely before starting another.
+Never rewrite completed systems unnecessarily.
 
-Every milestone must pass testing.
+Every milestone must pass testing before moving forward.
 
 ---
 
@@ -116,12 +118,14 @@ Every milestone must satisfy:
 
 - Builds successfully
 - No TypeScript errors
-- No console errors
+- No Prisma errors
 - No runtime errors
+- No console errors
 - No broken UI
 - Backend healthy
-- Database working
-- Authentication working (where applicable)
+- Database healthy
+- Authentication working
+- Manual testing completed
 
 ---
 
@@ -131,17 +135,29 @@ For every milestone:
 
 Create feature branch
 
+↓
+
 Implement
+
+↓
 
 Test
 
+↓
+
 Commit
+
+↓
 
 Push
 
+↓
+
 Review
 
-Merge
+↓
+
+Merge into main
 
 ---
 
@@ -170,6 +186,7 @@ Merge
 ## Database
 
 - Neon PostgreSQL
+
 - Prisma ORM
 
 ---
@@ -202,7 +219,7 @@ Frontend
 
 ↓
 
-Firebase Authentication
+React Query
 
 ↓
 
@@ -211,6 +228,10 @@ Axios API Layer
 ↓
 
 Express Backend
+
+↓
+
+Service Layer
 
 ↓
 
@@ -230,9 +251,13 @@ Backend follows feature-based architecture.
 
 Frontend uses service layer abstraction.
 
-Authentication is isolated inside AuthContext.
+Authentication remains isolated inside AuthContext.
 
 Role management remains inside RoleContext.
+
+Business logic belongs inside services.
+
+Controllers remain thin.
 
 ---
 
@@ -240,7 +265,7 @@ Role management remains inside RoleContext.
 
 ## Milestone 1
 
-Foundation & Authentication
+### Foundation & Authentication
 
 Status:
 
@@ -250,24 +275,57 @@ Features:
 
 - Express Backend
 - TypeScript Backend
+- Prisma ORM
 - Neon PostgreSQL
-- Prisma
 - Firebase Authentication
 - Google Login
 - Email Login
 - Protected Routes
 - Axios API Layer
 - AuthContext
-- User synchronization
-- User model
-- Health endpoint
-- CORS configuration
+- User Synchronization
+- User Model
+- Health Endpoint
+- CORS Configuration
 
 ---
 
 ## Milestone 2
 
-Database & Turf Management
+### Database & Turf Management
+
+Status:
+
+✅ Completed
+
+Features:
+
+- Production Prisma Schema
+- Sport Model
+- ProviderProfile Model
+- Turf Model
+- TurfSport Model
+- AvailabilitySlot Model
+- Favourite Model
+- Placeholder Models for Future Milestones
+- Prisma Migration
+- Seed Script
+- Feature-based Backend Architecture
+- Turf CRUD APIs
+- Sports APIs
+- Provider Profile APIs
+- Availability APIs
+- Favourite APIs
+- Soft Delete Support
+- React Query Integration
+- Frontend connected to PostgreSQL
+- Fake Turf Data replaced with Database
+
+---
+
+## Milestone 3
+
+### Booking System
 
 Status:
 
@@ -275,35 +333,23 @@ Status:
 
 Goal:
 
-Replace fake turf data with PostgreSQL.
+Build a complete production-ready booking system.
 
-Models:
+Focus Areas:
 
-- Turf
-- Sport
-- AvailabilitySlot
-- ProviderProfile
-- Booking (schema only)
-- HostedMatch (schema only)
-- MatchParticipant (schema only)
-- Review (schema only)
-- Favourite
-
----
-
-## Milestone 3
-
-Booking System
-
-Status:
-
-⬜ Pending
+- Slot Booking
+- Booking Validation
+- Prevent Double Booking
+- Booking History
+- Booking Status
+- Provider Booking Management
+- Transaction-safe Booking Flow
 
 ---
 
 ## Milestone 4
 
-Matchmaking
+### Matchmaking
 
 Status:
 
@@ -313,7 +359,7 @@ Status:
 
 ## Milestone 5
 
-Payments
+### Payments
 
 Status:
 
@@ -323,7 +369,7 @@ Status:
 
 ## Milestone 6
 
-Maps
+### Maps
 
 Status:
 
@@ -333,7 +379,7 @@ Status:
 
 ## Milestone 7
 
-Realtime
+### Realtime
 
 Status:
 
@@ -343,7 +389,7 @@ Status:
 
 ## Milestone 8
 
-Provider Analytics
+### Provider Analytics
 
 Status:
 
@@ -353,7 +399,7 @@ Status:
 
 ## Milestone 9
 
-Production Features
+### Production Features
 
 Status:
 
@@ -363,7 +409,7 @@ Status:
 
 ## Milestone 10
 
-Deployment & Polish
+### Deployment & Polish
 
 Status:
 
@@ -393,43 +439,47 @@ Use meaningful names.
 
 Document major architecture changes.
 
+Keep controllers thin.
+
+Business logic belongs in services.
+
 ---
 
 # AI Collaboration Workflow
 
 Step 1
 
-ChatGPT decides milestone.
+ChatGPT decides the milestone scope.
 
 ↓
 
 Step 2
 
-Claude inspects repository.
+Claude inspects the repository.
 
 ↓
 
 Step 3
 
-Claude generates implementation plan.
+Claude designs the architecture.
 
 ↓
 
 Step 4
 
-ChatGPT reviews architecture.
+ChatGPT reviews and improves the architecture.
 
 ↓
 
 Step 5
 
-Antigravity implements only that milestone.
+Antigravity implements ONLY the approved milestone.
 
 ↓
 
 Step 6
 
-Testing.
+Manual testing.
 
 ↓
 
@@ -441,13 +491,13 @@ Bug fixing.
 
 Step 8
 
-Git commit.
+Git Commit.
 
 ↓
 
 Step 9
 
-Merge.
+Merge into main.
 
 ↓
 
@@ -455,7 +505,7 @@ Repeat.
 
 ---
 
-# Important Rule
+# Important Rules
 
 Never skip milestones.
 
@@ -463,26 +513,54 @@ Never implement multiple milestones together.
 
 Never rewrite existing systems without reason.
 
-Always inspect the current repository before making implementation decisions.
+Always inspect the repository before making implementation decisions.
+
+Always preserve completed functionality.
 
 ---
 
 # Current Project State
 
-Authentication system is production-ready.
-
-Backend is connected to Neon PostgreSQL.
-
-Firebase Authentication is working.
-
-Google Login is working.
-
-Email Login is working.
-
-Protected Routes are working.
-
-User synchronization with PostgreSQL is working.
-
 Milestone 1 has been completed successfully.
 
-The project is now ready to begin Milestone 2.
+Milestone 2 has been completed successfully.
+
+Current System Capabilities:
+
+✅ Firebase Authentication
+
+✅ Google Login
+
+✅ Email Login
+
+✅ User Synchronization
+
+✅ PostgreSQL Integration
+
+✅ Prisma ORM
+
+✅ Sports Management
+
+✅ Turf Management
+
+✅ Provider Profiles
+
+✅ Availability Management
+
+✅ Favourite Infrastructure
+
+✅ REST APIs
+
+✅ React Query Integration
+
+The application now uses PostgreSQL as the source of truth for sports, turfs, provider profiles, and availability data.
+
+The project is now ready to begin **Milestone 3 – Booking System**.
+
+Known Product Improvements (Future Milestones):
+
+- Provider onboarding workflow instead of instant role switching.
+- Real reviews and ratings.
+- Dynamic slot pricing.
+- Production notifications.
+- Admin verification workflow.

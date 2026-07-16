@@ -2,10 +2,22 @@ import { prisma } from "../config/db.js";
 import { SlotStatus } from "@prisma/client";
 
 export async function getSlots(turfId: string, date: Date) {
+  const startOfDay = new Date(date);
+  startOfDay.setUTCHours(0, 0, 0, 0);
+
+  const endOfDay = new Date(date);
+  endOfDay.setUTCHours(23, 59, 59, 999);
+
   return await prisma.availabilitySlot.findMany({
     where: {
       turfId,
-      date,
+      date: {
+        gte: startOfDay,
+        lte: endOfDay,
+      },
+    },
+    include: {
+      booking: true,
     },
     orderBy: {
       startTime: "asc",

@@ -1,28 +1,32 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Clock, MapPin, Star, X, CheckCircle, Loader2 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { turfService } from "@/services/turf.service";
+import { bookingService } from "@/services/booking.service";
 import { getTurfImage } from "@/lib/utils";
+import { toast } from "sonner";
 
-const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const dates = [10, 11, 12, 13, 14, 15, 16];
 const timeSlots = [
   "6:00 AM", "7:00 AM", "8:00 AM", "9:00 AM", "10:00 AM", "11:00 AM",
   "12:00 PM", "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM", "5:00 PM",
   "6:00 PM", "7:00 PM", "8:00 PM", "9:00 PM", "10:00 PM",
 ];
 
-const initialBooked = new Set(["6:00 AM-10", "9:00 AM-11", "6:00 PM-14", "7:00 PM-14", "8:00 PM-14", "3:00 PM-12", "10:00 AM-15"]);
-
 const BookingCalendar = () => {
   const [searchParams] = useSearchParams();
   const turfId = searchParams.get("turfId");
+  const queryClient = useQueryClient();
 
-  const [selectedDate, setSelectedDate] = useState(14);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  
+  const next7Days = Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    return d;
+  });
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [bookedSlots, setBookedSlots] = useState(initialBooked);
   const [bookingState, setBookingState] = useState<"idle" | "loading" | "success">("idle");
 
   // Fetch turf details
@@ -33,7 +37,7 @@ const BookingCalendar = () => {
   });
 
   // Fetch slots availability for selectedDate
-  const dateStr = `2026-02-${selectedDate.toString().padStart(2, "0")}T00:00:00.000Z`;
+  const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}T00:00:00.000Z`;
   const { data: dbSlots = [], isLoading: isSlotsLoading } = useQuery({
     queryKey: ["availability", turfId, selectedDate],
     queryFn: () => turfService.getAvailability(turfId!, dateStr),
@@ -41,17 +45,20 @@ const BookingCalendar = () => {
   });
 
   const getSlotStatus = (time: string) => {
-    const dbSlot = dbSlots.find((s) => s.startTime === time);
-    const key = `${time}-${selectedDate}`;
-    const isLocallyBooked = bookedSlots.has(key);
+    const dbSlot = dbSlots.find((s: any) => s.startTime === time);
     const isBlocked = dbSlot?.status === "BLOCKED";
+    const dbSlotAny = dbSlot as any;
+    const hasBooking = dbSlotAny?.booking && dbSlotAny.booking.status !== "CANCELLED";
+    const isUnavailable = isBlocked || hasBooking || !dbSlot; // Must exist in db to book
+
     return {
-      isUnavailable: isBlocked || isLocallyBooked,
+      isUnavailable,
       price: dbSlot?.price || turf?.pricePerHour || 1200,
+      slotId: dbSlot?.id,
     };
   };
 
-  const handleSlotClick = (time: string, date: number) => {
+  const handleSlotClick = (time: string, date: Date) => {
     const status = getSlotStatus(time);
     if (status.isUnavailable) return;
     setSelectedSlot(time);
@@ -60,18 +67,34 @@ const BookingCalendar = () => {
     setBookingState("idle");
   };
 
-  const handleConfirmBooking = () => {
-    if (!selectedSlot) return;
-    setBookingState("loading");
-
-    // Optimistic update
-    const key = `${selectedSlot}-${selectedDate}`;
-    setBookedSlots((prev) => new Set([...prev, key]));
-
-    setTimeout(() => {
+  const bookingMutation = useMutation({
+    mutationFn: (slotId: string) => bookingService.createBooking(slotId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["availability"] });
+      queryClient.invalidateQueries({ queryKey: ["myBookings"] });
       setBookingState("success");
       setTimeout(() => setShowModal(false), 1200);
-    }, 800);
+      toast.success("Booking Confirmed!");
+    },
+    onError: (error: any) => {
+      setBookingState("idle");
+      const message = error.response?.data?.error || "Failed to book slot";
+      toast.error(message);
+      queryClient.invalidateQueries({ queryKey: ["availability"] });
+      setShowModal(false);
+    }
+  });
+
+  const handleConfirmBooking = () => {
+    if (!selectedSlot) return;
+    const status = getSlotStatus(selectedSlot);
+    if (!status.slotId) {
+      toast.error("Slot not available for booking");
+      return;
+    }
+
+    setBookingState("loading");
+    bookingMutation.mutate(status.slotId);
   };
 
   if (isTurfLoading || isSlotsLoading) {
@@ -120,20 +143,23 @@ const BookingCalendar = () => {
           <ChevronLeft className="h-4 w-4 text-muted-foreground" />
         </button>
         <div className="flex gap-2 flex-1 overflow-x-auto pb-1">
-          {days.map((day, i) => (
-            <button
-              key={i}
-              onClick={() => setSelectedDate(dates[i])}
-              className={`flex-1 min-w-[60px] py-3 rounded-xl text-center transition-all ${
-                selectedDate === dates[i]
-                  ? "bg-primary text-primary-foreground neon-glow"
-                  : "bg-secondary text-muted-foreground hover:bg-secondary/80"
-              }`}
-            >
-              <p className="text-xs font-medium">{day}</p>
-              <p className="text-lg font-bold mt-0.5">{dates[i]}</p>
-            </button>
-          ))}
+          {next7Days.map((date, i) => {
+            const isSelected = selectedDate.getDate() === date.getDate() && selectedDate.getMonth() === date.getMonth();
+            return (
+              <button
+                key={i}
+                onClick={() => setSelectedDate(date)}
+                className={`flex-1 min-w-[60px] py-3 rounded-xl text-center transition-all ${
+                  isSelected
+                    ? "bg-primary text-primary-foreground neon-glow"
+                    : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+                }`}
+              >
+                <p className="text-xs font-medium">{date.toLocaleDateString("en-US", { weekday: "short" })}</p>
+                <p className="text-lg font-bold mt-0.5">{date.getDate()}</p>
+              </button>
+            );
+          })}
         </div>
         <button className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors">
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -182,7 +208,7 @@ const BookingCalendar = () => {
                 <CheckCircle className="h-16 w-16 text-primary mx-auto mb-4" />
                 <h3 className="text-xl font-bold text-foreground">Booking Confirmed!</h3>
                 <p className="text-sm text-muted-foreground mt-2">
-                  {selectedSlot} on Feb {selectedDate} at {turf?.name || "Green Arena"}
+                  {selectedSlot} on {selectedDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} at {turf?.name || "Green Arena"}
                 </p>
               </div>
             ) : (
@@ -200,7 +226,7 @@ const BookingCalendar = () => {
                   </div>
                   <div className="flex justify-between py-2 border-b border-border">
                     <span className="text-muted-foreground">Date</span>
-                    <span className="text-foreground font-medium">Feb {selectedDate}, 2026</span>
+                    <span className="text-foreground font-medium">{selectedDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-border">
                     <span className="text-muted-foreground">Time</span>

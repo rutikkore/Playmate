@@ -26,8 +26,8 @@ async function main() {
   console.log(`Seeded ${Object.keys(sportsMap).length} sports.`);
 
   // 2. Find or Create Demo Provider User
-  let providerUser = await prisma.user.findFirst({
-    where: { role: Role.PROVIDER },
+  let providerUser = await prisma.user.findUnique({
+    where: { firebaseUid: "demo-provider-uid" },
   });
 
   if (!providerUser) {
@@ -154,7 +154,7 @@ async function main() {
   }
   console.log(`Seeded ${seededTurfs.length} turfs.`);
 
-  // 5. Seed Availability Slots (Feb 10 to Feb 16, 2026)
+  // 5. Seed Availability Slots for the next 14 days
   const timeSlots = [
     "6:00 AM", "7:00 AM", "8:00 AM", "9:00 AM", "10:00 AM", "11:00 AM",
     "12:00 PM", "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM", "5:00 PM",
@@ -163,9 +163,17 @@ async function main() {
 
   console.log("Seeding availability slots...");
   for (const turf of seededTurfs) {
-    // Generate slots for each date: Feb 10, 11, 12, 13, 14, 15, 16 of 2026
-    for (let day = 10; day <= 16; day++) {
-      const dateString = `2026-02-${day}T00:00:00.000Z`;
+    const slotsToInsert = [];
+    
+    // Generate slots for today and the next 13 days
+    for (let dayOffset = 0; dayOffset < 14; dayOffset++) {
+      const baseDate = new Date();
+      baseDate.setDate(baseDate.getDate() + dayOffset);
+
+      const year = baseDate.getFullYear();
+      const month = String(baseDate.getMonth() + 1).padStart(2, "0");
+      const dayStr = String(baseDate.getDate()).padStart(2, "0");
+      const dateString = `${year}-${month}-${dayStr}T00:00:00.000Z`;
       const date = new Date(dateString);
 
       for (const time of timeSlots) {
@@ -174,7 +182,7 @@ async function main() {
         let [hours, minutes] = hourStr.split(":").map(Number);
         if (modifier === "PM" && hours < 12) hours += 12;
         if (modifier === "AM" && hours === 12) hours = 0;
-        
+
         let endHours = hours + 1;
         let endModifier = "AM";
         if (endHours >= 12) {
@@ -185,32 +193,27 @@ async function main() {
         }
         const endTime = `${endHours}:00 ${endModifier}`;
 
-        // Match initial mock blocked slots in the frontend
-        // e.g. for "Green Arena 5-a-side" on Friday Feb 14, slot "11:00 AM" is BLOCKED
+        // Block a slot on the 4th day offset to maintain similar blocked slot behavior
         let status: SlotStatus = SlotStatus.AVAILABLE;
-        if (turf.name === "Green Arena 5-a-side" && day === 14 && time === "11:00 AM") {
+        if (turf.name === "Green Arena 5-a-side" && dayOffset === 4 && time === "11:00 AM") {
           status = SlotStatus.BLOCKED;
         }
 
-        await prisma.availabilitySlot.upsert({
-          where: {
-            turfId_date_startTime: {
-              turfId: turf.id,
-              date: date,
-              startTime: time,
-            },
-          },
-          update: {},
-          create: {
-            turfId: turf.id,
-            date: date,
-            startTime: time,
-            endTime: endTime,
-            status: status,
-          },
+        slotsToInsert.push({
+          turfId: turf.id,
+          date: date,
+          startTime: time,
+          endTime: endTime,
+          status: status,
         });
       }
     }
+    
+    console.log(`Inserting ${slotsToInsert.length} slots for ${turf.name}...`);
+    await prisma.availabilitySlot.createMany({
+      data: slotsToInsert,
+      skipDuplicates: true,
+    });
   }
   console.log("Seeded availability slots successfully.");
 }
