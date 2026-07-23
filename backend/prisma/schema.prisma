@@ -52,6 +52,8 @@ model User {
   providerProfile ProviderProfile?
   favourites      Favourite[]
   bookings        Booking[]
+  hostedMatches   Match[]           @relation("HostedMatches")
+  matchParticipations MatchParticipant[]
 }
 
 model ProviderProfile {
@@ -77,7 +79,8 @@ model Sport {
   updatedAt DateTime @updatedAt
 
   // Relationships
-  turfs TurfSport[]
+  turfs     TurfSport[]
+  matches   Match[]
 }
 
 model Turf {
@@ -168,19 +171,81 @@ model Booking {
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
+  // Relationships
+  match       Match?
+
   @@index([userId])
   @@index([turfId])
   @@index([status])
 }
 
-model HostedMatch {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
+model Match {
+  id               String             @id @default(cuid())
+  bookingId        String             @unique
+  booking          Booking            @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  hostId           String
+  host             User               @relation("HostedMatches", fields: [hostId], references: [id], onDelete: Restrict)
+  sportId          String
+  sport            Sport              @relation(fields: [sportId], references: [id], onDelete: Restrict)
+  description      String?            // Optional notes/description
+  status           MatchStatus        @default(OPEN)
+  skillLevel       SkillLevel         @default(MIXED)
+  maxPlayers       Int                // Max players capacity (e.g. 10 for 5v5)
+  participantCount Int                @default(1) // Cache the count, initialized to 1 (the host)
+  visibility       MatchVisibility    @default(PUBLIC)
+  cancelledAt      DateTime?
+  cancelReason     String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  // Relationships
+  participants     MatchParticipant[]
+
+  // Indexes
+  @@index([hostId])
+  @@index([status])
+  @@index([sportId])
+  @@index([visibility])
+  @@index([status, visibility])
 }
 
 model MatchParticipant {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
+  id        String          @id @default(cuid())
+  matchId   String
+  match     Match           @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      ParticipantRole @default(PLAYER)
+  joinedAt  DateTime        @default(now())
+
+  // Unique Constraint: One user can join a match only once
+  @@unique([matchId, userId])
+  @@index([matchId])
+}
+
+enum MatchStatus {
+  OPEN
+  FULL
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum SkillLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  MIXED
+}
+
+enum ParticipantRole {
+  HOST
+  PLAYER
+}
+
+enum MatchVisibility {
+  PUBLIC
+  PRIVATE
 }
 
 model Review {
