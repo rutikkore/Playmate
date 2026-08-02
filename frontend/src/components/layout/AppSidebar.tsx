@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Search, CalendarDays, Users, Gamepad2,
   BarChart3, Settings, LogOut, ChevronLeft, ChevronRight,
-  Building2, Clock, BookOpen, AlertTriangle,
+  Building2, Clock, BookOpen, AlertTriangle, Trophy,
 } from "lucide-react";
 import { useRole } from "@/contexts/RoleContext";
 
@@ -12,6 +12,7 @@ const playerNav = [
   { title: "Discover Turfs", path: "/discover", icon: Search },
   { title: "Book Slots", path: "/booking", icon: CalendarDays },
   { title: "Matchmaking", path: "/matchmaking", icon: Users },
+  { title: "My Matches", path: "/my-matches", icon: Trophy },
   { title: "My Games", path: "/my-games", icon: Gamepad2 },
 ];
 

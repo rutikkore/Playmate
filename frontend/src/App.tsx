@@ -14,6 +14,9 @@ import PlayerDashboard from "./pages/PlayerDashboard";
 import TurfDiscovery from "./pages/TurfDiscovery";
 import BookingCalendar from "./pages/BookingCalendar";
 import Matchmaking from "./pages/Matchmaking";
+import MatchDetails from "./pages/MatchDetails";
+import CreateMatch from "./pages/CreateMatch";
+import MyMatches from "./pages/MyMatches";
 import MyGames from "./pages/MyGames";
 import ProviderDashboard from "./pages/ProviderDashboard";
 import ProviderTurfs from "./pages/ProviderTurfs";
@@ -44,6 +47,11 @@ const AnimatedRoutes = () => {
             <Route path="/discover" element={<TurfDiscovery />} />
             <Route path="/booking" element={<BookingCalendar />} />
             <Route path="/matchmaking" element={<Matchmaking />} />
+            <Route path="/matches" element={<Matchmaking />} />
+            <Route path="/matches/create" element={<CreateMatch />} />
+            <Route path="/matches/:id" element={<MatchDetails />} />
+            <Route path="/matchmaking/:id" element={<MatchDetails />} />
+            <Route path="/my-matches" element={<MyMatches />} />
             <Route path="/my-games" element={<MyGames />} />
             {/* Provider routes */}
             <Route path="/provider" element={<ProviderDashboard />} />

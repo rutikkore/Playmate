@@ -1,11 +1,185 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
+model User {
+  id                  String             @id @default(cuid())
+  firebaseUid         String             @unique
+  email               String             @unique
+  name                String?
+  photoUrl            String?
+  role                Role               @default(PLAYER)
+  emailVerified       Boolean            @default(false)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  bookings            Booking[]
+  favourites          Favourite[]
+  hostedMatches       Match[]            @relation("HostedMatches")
+  matchParticipations MatchParticipant[]
+  providerProfile     ProviderProfile?
+}
+
+model ProviderProfile {
+  id                 String             @id @default(cuid())
+  userId             String             @unique
+  businessName       String
+  contactPhone       String?
+  verificationStatus VerificationStatus @default(PENDING)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  turfs              Turf[]
+}
+
+model Sport {
+  id        String      @id @default(cuid())
+  name      String      @unique
+  slug      String      @unique
+  icon      String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  matches   Match[]
+  turfs     TurfSport[]
+}
+
+model Turf {
+  id           String             @id @default(cuid())
+  name         String
+  description  String?
+  location     String
+  latitude     Float?
+  longitude    Float?
+  pricePerHour Float
+  courts       Int                @default(1)
+  images       String[]           @default([])
+  status       String             @default("active")
+  isDeleted    Boolean            @default(false)
+  deletedAt    DateTime?
+  providerId   String
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  slots        AvailabilitySlot[]
+  bookings     Booking[]
+  favourites   Favourite[]
+  reviews      Review[]
+  provider     ProviderProfile    @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  sports       TurfSport[]
+
+  @@index([providerId])
+  @@index([isDeleted])
+}
+
+model TurfSport {
+  turfId  String
+  sportId String
+  sport   Sport  @relation(fields: [sportId], references: [id], onDelete: Cascade)
+  turf    Turf   @relation(fields: [turfId], references: [id], onDelete: Cascade)
+
+  @@id([turfId, sportId])
+}
+
+model AvailabilitySlot {
+  id        String     @id @default(cuid())
+  turfId    String
+  date      DateTime
+  startTime String
+  endTime   String
+  status    SlotStatus @default(AVAILABLE)
+  price     Float?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  turf      Turf       @relation(fields: [turfId], references: [id], onDelete: Cascade)
+  booking   Booking?
+
+  @@unique([turfId, date, startTime])
+  @@index([turfId, date])
+}
+
+model Favourite {
+  id        String   @id @default(cuid())
+  userId    String
+  turfId    String
+  createdAt DateTime @default(now())
+  turf      Turf     @relation(fields: [turfId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, turfId])
+  @@index([userId])
+}
+
+model Booking {
+  id          String           @id @default(cuid())
+  userId      String
+  turfId      String
+  createdAt   DateTime         @default(now())
+  cancelledAt DateTime?
+  cancelledBy CancelledBy?
+  slotId      String           @unique
+  status      BookingStatus    @default(CONFIRMED)
+  totalPrice  Decimal
+  updatedAt   DateTime         @updatedAt
+  slot        AvailabilitySlot @relation(fields: [slotId], references: [id])
+  turf        Turf             @relation(fields: [turfId], references: [id])
+  user        User             @relation(fields: [userId], references: [id])
+  match       Match?
+
+  @@index([userId])
+  @@index([turfId])
+  @@index([status])
+}
+
+model Match {
+  id               String             @id @default(cuid())
+  bookingId        String             @unique
+  hostId           String
+  sportId          String
+  description      String?
+  status           MatchStatus        @default(OPEN)
+  skillLevel       SkillLevel         @default(MIXED)
+  maxPlayers       Int
+  participantCount Int                @default(1)
+  visibility       MatchVisibility    @default(PUBLIC)
+  cancelledAt      DateTime?
+  cancelReason     String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  booking          Booking            @relation(fields: [bookingId], references: [id])
+  host             User               @relation("HostedMatches", fields: [hostId], references: [id])
+  sport            Sport              @relation(fields: [sportId], references: [id])
+  participants     MatchParticipant[]
+
+  @@index([hostId])
+  @@index([status])
+  @@index([sportId])
+  @@index([visibility])
+  @@index([status, visibility])
+}
+
+model MatchParticipant {
+  id       String          @id @default(cuid())
+  joinedAt DateTime        @default(now())
+  matchId  String
+  role     ParticipantRole @default(PLAYER)
+  userId   String
+  match    Match           @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, userId])
+  @@index([matchId])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  turfId    String
+  rating    Int
+  createdAt DateTime @default(now())
+  turf      Turf     @relation(fields: [turfId], references: [id])
 }
 
 enum Role {
@@ -37,156 +211,27 @@ enum CancelledBy {
   SYSTEM
 }
 
-model User {
-  id            String   @id @default(cuid())
-  firebaseUid   String   @unique
-  email         String   @unique
-  name          String?
-  photoUrl      String?
-  role          Role     @default(PLAYER)
-  emailVerified Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  // Relationships
-  providerProfile ProviderProfile?
-  favourites      Favourite[]
-  bookings        Booking[]
+enum MatchStatus {
+  OPEN
+  FULL
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
 }
 
-model ProviderProfile {
-  id                 String             @id @default(cuid())
-  userId             String             @unique
-  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  businessName       String
-  contactPhone       String?
-  verificationStatus VerificationStatus @default(PENDING)
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
-
-  // Relationships
-  turfs Turf[]
+enum SkillLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  MIXED
 }
 
-model Sport {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  slug      String   @unique
-  icon      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relationships
-  turfs TurfSport[]
+enum ParticipantRole {
+  HOST
+  PLAYER
 }
 
-model Turf {
-  id           String   @id @default(cuid())
-  name         String
-  description  String?
-  location     String
-  latitude     Float?
-  longitude    Float?
-  pricePerHour Float
-  courts       Int      @default(1)
-  images       String[] @default([])
-  status       String   @default("active") // active, inactive
-  isDeleted    Boolean  @default(false)
-  deletedAt    DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  // Relationships
-  providerId String
-  provider   ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  
-  sports     TurfSport[]
-  slots      AvailabilitySlot[]
-  favourites Favourite[]
-  
-  // Placeholders
-  bookings   Booking[]
-  reviews    Review[]
-
-  @@index([providerId])
-  @@index([isDeleted])
-}
-
-model TurfSport {
-  turfId  String
-  sportId String
-  turf    Turf   @relation(fields: [turfId], references: [id], onDelete: Cascade)
-  sport   Sport  @relation(fields: [sportId], references: [id], onDelete: Cascade)
-
-  @@id([turfId, sportId])
-}
-
-model AvailabilitySlot {
-  id        String     @id @default(cuid())
-  turfId    String
-  turf      Turf       @relation(fields: [turfId], references: [id], onDelete: Cascade)
-  date      DateTime
-  startTime String     // e.g. "06:00 AM" or "06:00"
-  endTime   String     // e.g. "07:00 AM" or "07:00"
-  status    SlotStatus @default(AVAILABLE)
-  price     Float?
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-
-  // Relationships
-  booking   Booking?
-
-  @@unique([turfId, date, startTime])
-  @@index([turfId, date])
-}
-
-model Favourite {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  turfId    String
-  turf      Turf     @relation(fields: [turfId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-
-  @@unique([userId, turfId])
-  @@index([userId])
-}
-
-// Placeholder models for Milestone 3+ (minimal)
-model Booking {
-  id          String           @id @default(cuid())
-  userId      String
-  user        User             @relation(fields: [userId], references: [id], onDelete: Restrict)
-  turfId      String
-  turf        Turf             @relation(fields: [turfId], references: [id], onDelete: Restrict)
-  slotId      String           @unique
-  slot        AvailabilitySlot @relation(fields: [slotId], references: [id], onDelete: Restrict)
-  status      BookingStatus    @default(CONFIRMED)
-  totalPrice  Decimal
-  cancelledAt DateTime?
-  cancelledBy CancelledBy?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-
-  @@index([userId])
-  @@index([turfId])
-  @@index([status])
-}
-
-model HostedMatch {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-}
-
-model MatchParticipant {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-}
-
-model Review {
-  id        String   @id @default(cuid())
-  turfId    String
-  turf      Turf     @relation(fields: [turfId], references: [id])
-  rating    Int
-  createdAt DateTime @default(now())
+enum MatchVisibility {
+  PUBLIC
+  PRIVATE
 }
