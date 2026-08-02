@@ -152,4 +152,28 @@ export const matchService = {
     const response = await API.delete<Match>(`/matches/${id}/leave`);
     return response.data;
   },
+
+  /**
+   * Start a match (host only)
+   */
+  startMatch: async (id: string): Promise<Match> => {
+    const response = await API.patch<Match>(`/matches/${id}/start`);
+    return response.data;
+  },
+
+  /**
+   * Cancel a match (host only)
+   */
+  cancelMatch: async (id: string, reason?: string): Promise<Match> => {
+    const response = await API.patch<Match>(`/matches/${id}/cancel`, { reason });
+    return response.data;
+  },
+
+  /**
+   * Complete a match (host only)
+   */
+  completeMatch: async (id: string): Promise<Match> => {
+    const response = await API.patch<Match>(`/matches/${id}/complete`);
+    return response.data;
+  },
 };

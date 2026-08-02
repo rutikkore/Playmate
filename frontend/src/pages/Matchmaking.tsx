@@ -8,6 +8,7 @@ import { MatchCard } from "../components/MatchCard";
 import { Button } from "../components/ui/button";
 import { Skeleton } from "../components/ui/skeleton";
 import { SkillLevel, MatchStatus } from "../services/match.service";
+import { matchKeys } from "../features/matchmaking/utils/matchKeys";
 
 const skillLevels: Array<{ value: string; label: string }> = [
   { value: "All", label: "All Skill Levels" },
@@ -89,7 +90,7 @@ const Matchmaking = () => {
 
   const handleRetry = () => {
     // Invalidate react query cache for matches instead of reloading the page
-    queryClient.invalidateQueries({ queryKey: ["matches"] });
+    queryClient.invalidateQueries({ queryKey: matchKeys.all });
     refetch();
   };
 

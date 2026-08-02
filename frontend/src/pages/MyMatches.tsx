@@ -8,6 +8,7 @@ import { matchService } from "@/services/match.service";
 import { turfService } from "@/services/turf.service";
 import { MatchCard } from "@/components/MatchCard";
 import { Button } from "@/components/ui/button";
+import { matchKeys } from "@/features/matchmaking/utils/matchKeys";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -23,7 +24,7 @@ export default function MyMatches() {
     isError: isHostedError, 
     refetch: refetchHosted 
   } = useQuery({
-    queryKey: ["myHostedMatches"],
+    queryKey: matchKeys.hosted(),
     queryFn: () => matchService.getMyHostedMatches(),
   });
 
@@ -33,7 +34,7 @@ export default function MyMatches() {
     isError: isJoinedError, 
     refetch: refetchJoined 
   } = useQuery({
-    queryKey: ["myJoinedMatches"],
+    queryKey: matchKeys.joined(),
     queryFn: () => matchService.getMyJoinedMatches(),
   });
 

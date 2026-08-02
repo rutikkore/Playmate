@@ -8,6 +8,7 @@ import {
 import { bookingService } from "@/services/booking.service";
 import { matchService, SkillLevel, MatchVisibility } from "@/services/match.service";
 import { turfService } from "@/services/turf.service";
+import { matchKeys } from "@/features/matchmaking/utils/matchKeys";
 import { toast } from "sonner";
 import { format, parse, isAfter } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -47,7 +48,7 @@ export default function CreateMatch() {
   });
 
   const { data: hostedMatches = [], isLoading: isHostedLoading } = useQuery({
-    queryKey: ["myHostedMatches"],
+    queryKey: matchKeys.hosted(),
     queryFn: () => matchService.getMyHostedMatches(),
   });
 

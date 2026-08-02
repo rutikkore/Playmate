@@ -6,6 +6,8 @@ import { useMatchDetails } from "../hooks/useMatches";
 import { turfService } from "../services/turf.service";
 import { useAuth } from "../contexts/AuthContext";
 import { matchService, SkillLevel, MatchStatus } from "../services/match.service";
+import HostControls from "../features/matchmaking/components/HostControls";
+import { matchKeys } from "../features/matchmaking/utils/matchKeys";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Skeleton } from "../components/ui/skeleton";
@@ -30,10 +32,10 @@ const statusColors: Record<MatchStatus, string> = {
 export default function MatchDetails() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   // Fetch match details using React Query
-  const { data: match, isLoading, isError, isFetching, refetch } = useMatchDetails(id || "");
+  const { data: match, isLoading: isMatchLoading, isError, isFetching, refetch } = useMatchDetails(id || "");
 
   // Join match mutation
   const joinMutation = useMutation({
@@ -41,8 +43,8 @@ export default function MatchDetails() {
     onSuccess: () => {
       toast.success("Joined match successfully!");
       // Invalidate queries to refresh lists and detail views
-      queryClient.invalidateQueries({ queryKey: ["matches"] });
-      queryClient.invalidateQueries({ queryKey: ["myJoinedMatches"] });
+      queryClient.invalidateQueries({ queryKey: matchKeys.all });
+      queryClient.invalidateQueries({ queryKey: matchKeys.joined() });
       queryClient.invalidateQueries({ queryKey: ["myBookings"] });
     },
     onError: (error: any) => {
@@ -57,8 +59,8 @@ export default function MatchDetails() {
     onSuccess: () => {
       toast.success("Left match successfully!");
       // Invalidate queries to refresh lists and detail views
-      queryClient.invalidateQueries({ queryKey: ["matches"] });
-      queryClient.invalidateQueries({ queryKey: ["myJoinedMatches"] });
+      queryClient.invalidateQueries({ queryKey: matchKeys.all });
+      queryClient.invalidateQueries({ queryKey: matchKeys.joined() });
       queryClient.invalidateQueries({ queryKey: ["myBookings"] });
     },
     onError: (error: any) => {
@@ -83,13 +85,13 @@ export default function MatchDetails() {
   }, [dbSports]);
 
   const handleRetry = () => {
-    queryClient.invalidateQueries({ queryKey: ["matches", "detail", id] });
+    queryClient.invalidateQueries({ queryKey: matchKeys.detail(id || "") });
     refetch();
   };
 
   const sportName = match ? sportsMap[match.sportId] || "Sport" : "Sport";
 
-  if (isLoading) {
+  if (isMatchLoading) {
     return (
       <div className="p-6 lg:p-8 animate-fade-in max-w-5xl mx-auto">
         {/* Back navigation skeleton */}
@@ -170,6 +172,7 @@ export default function MatchDetails() {
   const isHost = match.hostId === user?.id;
   const isMatchOpen = match.status === "OPEN";
   const hasSlots = match.participantCount < match.maxPlayers;
+  const showHostControls = isAuthenticated && !authLoading && !isMatchLoading && isHost;
 
   return (
     <div className="p-6 lg:p-8 animate-fade-in max-w-5xl mx-auto flex flex-col min-h-screen">
@@ -213,6 +216,25 @@ export default function MatchDetails() {
           <span>Hosted by <strong className="text-foreground font-semibold">{match.host.name || "Anonymous"}</strong></span>
         </div>
       </div>
+
+      {/* Cancellation Banner */}
+      {match.status === "CANCELLED" && (
+        <div className="glass-card border-destructive/30 bg-destructive/10 p-5 mb-6 flex items-start gap-3.5 animate-scale-in">
+          <AlertTriangle className="h-6 w-6 text-destructive shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <h3 className="text-base font-bold text-foreground">Match Cancelled</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              This match has been cancelled by the host.
+            </p>
+            {match.cancelReason && (
+              <div className="mt-2.5 p-3 bg-secondary/50 rounded-lg border border-border/50 text-xs">
+                <span className="font-semibold text-foreground block mb-0.5">Cancellation Reason:</span>
+                <span className="text-muted-foreground leading-normal">{match.cancelReason}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Grid Layout columns */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -338,11 +360,8 @@ export default function MatchDetails() {
                       <Link to="/login">Sign In</Link>
                     </Button>
                   </div>
-                ) : isHost ? (
-                  <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
-                    <p className="text-sm font-semibold text-primary">You are hosting this match</p>
-                    <p className="text-xs text-muted-foreground mt-1">Host controls are managed separately.</p>
-                  </div>
+                ) : showHostControls ? (
+                  <HostControls match={match} />
                 ) : isParticipant ? (
                   <div className="space-y-2">
                     <p className="text-xs text-primary font-medium">✓ You have joined this match</p>

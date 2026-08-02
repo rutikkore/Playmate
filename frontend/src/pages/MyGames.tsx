@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { bookingService } from "@/services/booking.service";
 import { matchService } from "@/services/match.service";
+import { matchKeys } from "@/features/matchmaking/utils/matchKeys";
 import { toast } from "sonner";
 import { format, parse, isAfter } from "date-fns";
 
@@ -33,7 +34,7 @@ const MyGames = () => {
   });
 
   const { data: hostedMatches = [], isLoading: isHostedLoading } = useQuery({
-    queryKey: ["myHostedMatches"],
+    queryKey: matchKeys.hosted(),
     queryFn: () => matchService.getMyHostedMatches(),
   });
 
@@ -42,7 +43,7 @@ const MyGames = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["myBookings"] });
       queryClient.invalidateQueries({ queryKey: ["availability"] });
-      queryClient.invalidateQueries({ queryKey: ["myHostedMatches"] });
+      queryClient.invalidateQueries({ queryKey: matchKeys.hosted() });
       toast.success("Booking cancelled successfully");
     },
     onError: (error: any) => {

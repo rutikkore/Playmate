@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { matchService, MatchFilters } from "../services/match.service";
+import { matchKeys } from "../features/matchmaking/utils/matchKeys";
 
 /**
  * Hook to fetch matches list with caching, pagination and filters
  */
 export function useMatches(filters: MatchFilters) {
   return useQuery({
-    queryKey: ["matches", filters],
+    queryKey: matchKeys.list(filters),
     queryFn: () => matchService.getMatches(filters),
     staleTime: 60000, // 1 minute stale time for the list
     refetchOnWindowFocus: false, // avoid unexpected refreshes of the listing view
@@ -18,7 +19,7 @@ export function useMatches(filters: MatchFilters) {
  */
 export function useMatchDetails(id: string) {
   return useQuery({
-    queryKey: ["matches", "detail", id],
+    queryKey: matchKeys.detail(id),
     queryFn: () => matchService.getMatchById(id),
     enabled: !!id,
     staleTime: 30000, // 30 seconds stale time for details
